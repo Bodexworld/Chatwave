@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email', 'id']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.email is string && data.email.size() <= 150 &&
+             data.id is string && data.id == request.auth.uid &&
+             data.get('avatar', '') is string && data.get('avatar', '').size() <= 500000 &&
+             data.get('online', false) is bool &&
+             data.get('lastSeen', request.time) is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && isValidUser(incoming());
+      allow update: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && isValidUser(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'avatar', 'online', 'lastSeen']);
+    }
+
+    function isValidChat(data) {
+      return data.keys().hasAll(['type', 'participants', 'createdAt', 'updatedAt']) &&
+             data.type is string && data.type in ['direct', 'group'] &&
+             data.participants is list && data.participants.size() >= 1 && data.participants.size() <= 50 && data.participants[0] is string &&
+             data.createdAt is timestamp && data.updatedAt is timestamp &&
+             data.get('name', '') is string && data.get('name', '').size() <= 100 &&
+             data.get('avatar', '') is string && data.get('avatar', '').size() <= 500000 &&
+             data.get('lastMessage', {}) is map;
+    }
+
+    match /chats/{chatId} {
+      allow get: if isSignedIn() && isValidId(chatId) && request.auth.uid in resource.data.participants;
+      allow list: if isSignedIn() && request.auth.uid in resource.data.participants;
+      
+      allow create: if isSignedIn() && isValidId(chatId) &&
+                    isValidChat(incoming()) &&
+                    request.auth.uid in incoming().participants &&
+                    incoming().createdAt == request.time;
+      
+      allow update: if isSignedIn() && isValidId(chatId) &&
+                    request.auth.uid in existing().participants &&
+                    isValidChat(incoming()) &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['updatedAt', 'lastMessage', 'name', 'avatar', 'participants']);
+    }
+
+    function isValidMessage(data) {
+       return data.keys().hasAll(['senderId', 'type', 'status', 'timestamp', 'chatId']) &&
+              data.senderId is string && data.senderId == request.auth.uid &&
+              data.chatId is string &&
+              data.type is string && data.type in ['text', 'image', 'voice', 'file'] &&
+              data.status is string && data.status in ['sent', 'delivered', 'read'] &&
+              data.timestamp is timestamp &&
+              data.get('content', '') is string && data.get('content', '').size() <= 5000 &&
+              data.get('mediaUrl', '') is string && data.get('mediaUrl', '').size() <= 500;
+    }
+
+    match /chats/{chatId}/messages/{messageId} {
+      function isChatParticipant() {
+        return request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      }
+
+      allow get: if isSignedIn() && isValidId(chatId) && isValidId(messageId) && isChatParticipant();
+      allow list: if isSignedIn() && isValidId(chatId) && isChatParticipant();
+      
+      allow create: if isSignedIn() && isValidId(chatId) && isValidId(messageId) &&
+                    isValidMessage(incoming()) &&
+                    incoming().chatId == chatId &&
+                    isChatParticipant() &&
+                    incoming().timestamp == request.time;
+                    
+      allow update: if isSignedIn() && isValidId(chatId) && isValidId(messageId) &&
+                    isChatParticipant() &&
+                    isValidMessage(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
+                    incoming().senderId == existing().senderId &&
+                    incoming().type == existing().type &&
+                    incoming().chatId == existing().chatId &&
+                    // Just verifying some immutable fields don't change
+                    incoming().get('content', '') == existing().get('content', '') &&
+                    incoming().get('mediaUrl', '') == existing().get('mediaUrl', '');
+    }
+  }
+}

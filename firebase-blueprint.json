@@ -1,0 +1,97 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "User's auth uid" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "avatar": { "type": "string", "format": "uri" },
+        "online": { "type": "boolean" },
+        "lastSeen": { "type": "number", "description": "Timestamp" }
+      },
+      "required": ["id", "name", "email"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "Chat session (direct or group)",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["direct", "group"] },
+        "participants": { "type": "array", "items": { "type": "string" }, "description": "Array of participant uids" },
+        "name": { "type": "string", "description": "Optional group name" },
+        "avatar": { "type": "string", "description": "Optional group avatar" },
+        "createdAt": { "type": "number", "description": "Creation timestamp" },
+        "updatedAt": { "type": "number", "description": "Last update timestamp" }
+      },
+      "required": ["type", "participants", "createdAt", "updatedAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Message within a chat",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "image", "voice", "file"] },
+        "status": { "type": "string", "enum": ["sent", "delivered", "read"] },
+        "timestamp": { "type": "number", "description": "Message timestamp" },
+        "mediaUrl": { "type": "string" }
+      },
+      "required": ["senderId", "type", "status", "timestamp"]
+    },
+    "CallSession": {
+      "title": "CallSession",
+      "description": "Call signaling data",
+      "type": "object",
+      "properties": {
+        "callerId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "type": { "type": "string", "enum": ["voice", "video"] },
+        "status": { "type": "string", "enum": ["calling", "ringing", "connected", "ended", "rejected", "missed"] },
+        "createdAt": { "type": "number", "description": "Creation timestamp" },
+        "callerName": { "type": "string" },
+        "callerAvatar": { "type": "string" }
+      },
+      "required": ["callerId", "receiverId", "type", "status", "createdAt"]
+    },
+    "StatusUpdate": {
+      "title": "StatusUpdate",
+      "description": "User status update",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userAvatar": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "viewers": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["userId", "userName", "userAvatar", "imageUrl", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/statuses/{statusId}": {
+      "schema": { "$ref": "#/entities/StatusUpdate" },
+      "description": "User statuses"
+    },
+    "/calls/{callId}": {
+      "schema": { "$ref": "#/entities/CallSession" },
+      "description": "Active calls and signaling"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "/chats/{chatId}": {
+      "schema": { "$ref": "#/entities/Chat" },
+      "description": "Chat sessions user is part of"
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Messages inside a chat session"
+    }
+  }
+}

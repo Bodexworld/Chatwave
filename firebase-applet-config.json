@@ -1,0 +1,10 @@
+{
+  "projectId": "bodex-ai-assistant",
+  "appId": "1:432380724531:web:b8774cfee9d083ece4ea46",
+  "apiKey": "AIzaSyAYgA4xTTbD8mqCsUyfGUqHGR7MN-PXRvA",
+  "authDomain": "bodex-ai-assistant.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-c56e9b36-9137-4806-b735-4466dbb7403d",
+  "storageBucket": "bodex-ai-assistant.firebasestorage.app",
+  "messagingSenderId": "432380724531",
+  "measurementId": ""
+}

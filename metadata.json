@@ -1,0 +1,6 @@
+{
+  "name": "Chatwave",
+  "description": "A modern, responsive real-time messaging application.",
+  "requestFramePermissions": ["microphone", "camera"],
+  "majorCapabilities": []
+}
